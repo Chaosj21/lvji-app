@@ -65,6 +65,38 @@ class ExpenseDaoManager {
       $$ExpensesTableTableManager(_db.attachedDatabase, _db.expenses);
 }
 
+mixin _$PackingDaoMixin on DatabaseAccessor<AppDatabase> {
+  $TripsTable get trips => attachedDatabase.trips;
+  $PackingChecklistsTable get packingChecklists =>
+      attachedDatabase.packingChecklists;
+  PackingDaoManager get managers => PackingDaoManager(this);
+}
+
+class PackingDaoManager {
+  final _$PackingDaoMixin _db;
+  PackingDaoManager(this._db);
+  $$TripsTableTableManager get trips =>
+      $$TripsTableTableManager(_db.attachedDatabase, _db.trips);
+  $$PackingChecklistsTableTableManager get packingChecklists =>
+      $$PackingChecklistsTableTableManager(
+          _db.attachedDatabase, _db.packingChecklists);
+}
+
+mixin _$JournalDaoMixin on DatabaseAccessor<AppDatabase> {
+  $TripsTable get trips => attachedDatabase.trips;
+  $JournalsTable get journals => attachedDatabase.journals;
+  JournalDaoManager get managers => JournalDaoManager(this);
+}
+
+class JournalDaoManager {
+  final _$JournalDaoMixin _db;
+  JournalDaoManager(this._db);
+  $$TripsTableTableManager get trips =>
+      $$TripsTableTableManager(_db.attachedDatabase, _db.trips);
+  $$JournalsTableTableManager get journals =>
+      $$JournalsTableTableManager(_db.attachedDatabase, _db.journals);
+}
+
 class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -4311,6 +4343,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final LocationDao locationDao = LocationDao(this as AppDatabase);
   late final MomentDao momentDao = MomentDao(this as AppDatabase);
   late final ExpenseDao expenseDao = ExpenseDao(this as AppDatabase);
+  late final PackingDao packingDao = PackingDao(this as AppDatabase);
+  late final JournalDao journalDao = JournalDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();

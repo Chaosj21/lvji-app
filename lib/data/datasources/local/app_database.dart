@@ -276,11 +276,61 @@ class ExpenseDao extends DatabaseAccessor<AppDatabase> with _$ExpenseDaoMixin {
       (delete(expenses)..where((e) => e.id.equals(id))).go();
 }
 
+/// Phase 2 新增：物品清单 DAO
+@DriftAccessor(tables: [PackingChecklists])
+class PackingDao extends DatabaseAccessor<AppDatabase> with _$PackingDaoMixin {
+  PackingDao(AppDatabase db) : super(db);
+
+  Future<List<PackingChecklist>> getByTrip(String tripId) => (select(packingChecklists)
+        ..where((p) => p.tripId.equals(tripId))
+        ..orderBy([(p) => OrderingTerm.asc(p.sortOrder)]))
+      .get();
+
+  Future<int> createItem(PackingChecklistsCompanion item) =>
+      into(packingChecklists).insert(item);
+
+  Future<int> updateItem(PackingChecklistsCompanion item) =>
+      update(packingChecklists).replace(item).then((_) => 1);
+
+  Future<int> deleteItem(String id) =>
+      (delete(packingChecklists)..where((p) => p.id.equals(id))).go();
+
+  Future<bool> togglePacked(String id, bool packed) async {
+    final row = await (select(packingChecklists)..where((p) => p.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null) return false;
+    return update(packingChecklists).replace(row.copyWith(isPacked: packed)).then((_) => true);
+  }
+}
+
+/// ✨ Phase 4 新增：后记 DAO
+@DriftAccessor(tables: [Journals])
+class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
+  JournalDao(AppDatabase db) : super(db);
+
+  /// 每个 trip 只有一篇 journal（表里有 uniqueKeys 约束），没有就返回 null
+  Future<Journal?> getByTrip(String tripId) =>
+      (select(journals)..where((j) => j.tripId.equals(tripId))).getSingleOrNull();
+
+  /// 有则更新、无则插入（因为 tripId 是唯一键）
+  Future<void> upsert(JournalsCompanion journal) async {
+    final existing = await getByTrip(journal.tripId.value);
+    if (existing == null) {
+      await into(journals).insert(journal);
+    } else {
+      await (update(journals)..where((j) => j.tripId.equals(journal.tripId.value))).write(journal);
+    }
+  }
+
+  Future<bool> deleteByTrip(String tripId) =>
+      (delete(journals)..where((j) => j.tripId.equals(tripId))).go().then((n) => n > 0);
+}
+
 /// ============ Database ============
 
 @DriftDatabase(
   tables: [Trips, Locations, LocationConnectors, Moments, Expenses, Journals, PackingChecklists, SyncQueue],
-  daos: [TripDao, LocationDao, MomentDao, ExpenseDao],
+  daos: [TripDao, LocationDao, MomentDao, ExpenseDao, PackingDao, JournalDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor executor) : super(executor);
