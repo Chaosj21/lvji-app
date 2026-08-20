@@ -5,6 +5,8 @@ import '../../core/constants/journal_styles.dart';
 import '../../data/datasources/local/app_database.dart';
 import '../../services/journal_generation_service.dart';
 import '../providers.dart';
+import 'ai_config_controller.dart';
+import '../../domain/ai_config.dart';
 
 class JournalStats {
   final int locationCount; // 打卡地点数
@@ -244,8 +246,11 @@ class JournalController extends StateNotifier<JournalState> {
 }
 
 final journalGenerationServiceProvider = Provider<JournalGenerationService>((ref) {
-  // Phase 4：先用本地模板版本。等后端 AI 代理服务就绪后，把这一行换成
-  // RemoteJournalGenerationService(baseUrl: ...) 即可，其他代码不用动。
+  final aiConfig = ref.watch(aiConfigControllerProvider);
+  if (aiConfig.mode == AIProviderMode.custom && aiConfig.isCustomReady) {
+    return AIJournalGenerationService(ref.watch(aiServiceProvider));
+  }
+  // 默认渠道：本地模板拼接，不需要用户配置任何东西就能用
   return TemplateJournalGenerationService();
 });
 

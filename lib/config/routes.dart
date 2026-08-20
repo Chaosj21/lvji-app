@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import '../presentation/views/login/login_screen.dart';
 import '../presentation/views/login/register_screen.dart';
 import '../presentation/views/home/home_screen.dart';
+import '../presentation/views/trip_detail/trip_detail_screen.dart';
+import '../presentation/views/settings/settings_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -11,7 +13,7 @@ final router = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: '/login',
   redirect: (context, state) async {
-    // TODO(Phase 1+): 接入真实的持久化登录态判断（如 shared_preferences 中的 token）
+    // TODO(Phase 1+): 接入真实的持久化登录态判断
     return null;
   },
   routes: [
@@ -27,9 +29,7 @@ final router = GoRouter(
     ),
     ShellRoute(
       navigatorKey: shellNavigatorKey,
-      builder: (context, state, child) {
-        return child;
-      },
+      builder: (context, state, child) => child,
       routes: [
         GoRoute(
           path: '/',
@@ -39,8 +39,7 @@ final router = GoRouter(
             GoRoute(
               path: 'trip/:tripId',
               name: 'trip-detail',
-              // TODO(Phase 2): 替换为真实的 TripDetailScreen（计划/随记/后记三个 Tab）
-              builder: (context, state) => TripDetailScreenPlaceholder(
+              builder: (context, state) => TripDetailScreen(
                 tripId: state.pathParameters['tripId']!,
               ),
             ),
@@ -49,44 +48,9 @@ final router = GoRouter(
         GoRoute(
           path: '/settings',
           name: 'settings',
-          // TODO(Phase 5): 替换为真实的 SettingsScreen
-          builder: (context, state) => const SettingsScreenPlaceholder(),
+          builder: (context, state) => const SettingsScreen(),
         ),
       ],
     ),
   ],
 );
-
-/// Phase 2 中会被替换为真实的 Trip 详情页（含 计划/随记/后记 三个 Tab）
-class TripDetailScreenPlaceholder extends StatelessWidget {
-  final String tripId;
-
-  const TripDetailScreenPlaceholder({
-    required this.tripId,
-    Key? key,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(onPressed: () => Navigator.of(context).maybePop()),
-        title: Text('旅程详情 · $tripId'),
-      ),
-      body: const Center(child: Text('计划 / 随记 / 后记 页面将在 Phase 2-4 中实现')),
-    );
-  }
-}
-
-/// Phase 5 中会被替换为真实的设置页
-class SettingsScreenPlaceholder extends StatelessWidget {
-  const SettingsScreenPlaceholder({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
-      body: const Center(child: Text('设置页面将在 Phase 5 中实现')),
-    );
-  }
-}

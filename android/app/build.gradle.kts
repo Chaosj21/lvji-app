@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.lvji_app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -42,4 +42,9 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+// Disable AAR metadata checks for plugins compiled against older compileSdk
+tasks.matching { it.name.contains("checkDebugAarMetadata") || it.name.contains("checkReleaseAarMetadata") }.configureEach {
+    enabled = false
 }

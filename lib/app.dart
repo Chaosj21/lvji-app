@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'config/theme.dart';
 import 'config/routes.dart';
+import 'presentation/controllers/theme_controller.dart';
 
 class LvjiApp extends ConsumerWidget {
   const LvjiApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch theme mode from provider
-    final themeMode = ref.watch(themeModeProvider);
-    
+    final themeMode = ref.watch(themeControllerProvider);
+
     return MaterialApp.router(
       title: '旅记',
       theme: lightTheme,
@@ -29,8 +29,3 @@ class LvjiApp extends ConsumerWidget {
     );
   }
 }
-
-// Simple theme mode provider for Phase 1
-final themeModeProvider = StateProvider<ThemeMode>((ref) {
-  return ThemeMode.light;
-});

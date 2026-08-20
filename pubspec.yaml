@@ -18,9 +18,9 @@ dependencies:
   
   # Database
   drift: ^2.13.0
-  sqlite3_flutter_libs: ^0.5.0
   
   # HTTP Client
+  flutter_secure_storage: ^11.0.0
   dio: ^5.3.0
   
   # Routing
@@ -29,6 +29,8 @@ dependencies:
   # Map & Location
   amap_flutter_map: ^3.0.0
   amap_flutter_location: ^3.0.0
+
+  # Note: amap_flutter_base is a transitive dependency of amap_flutter_map
   
   # UI
   cupertino_icons: ^1.0.0
@@ -39,11 +41,11 @@ dependencies:
   
   # File & Export
   pdf: ^3.8.0
-  screenshot: ^2.1.0
-  share_plus: ^7.0.0
+  screenshot: ^3.0.0
+  share_plus: ^13.3.0
   
   # Network Detection
-  connectivity_plus: ^5.0.0
+  connectivity_plus: ^7.3.1
   
   # Logging
   logger: ^2.0.0
@@ -72,6 +74,14 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+dependency_overrides:
+  amap_flutter_base:
+    path: packages/amap_flutter_base_override
+  amap_flutter_map:
+    path: packages/amap_flutter_map_override
+  amap_flutter_location:
+    path: packages/amap_flutter_location_override
   
   # assets:
   #   - assets/images/

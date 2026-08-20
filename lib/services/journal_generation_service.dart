@@ -1,5 +1,7 @@
+import 'dart:convert';
 import '../core/constants/journal_styles.dart';
 import '../data/datasources/local/app_database.dart';
+import 'ai_service.dart';
 
 class JournalDraft {
   final String title;
@@ -10,12 +12,9 @@ class JournalDraft {
 
 /// 后记生成的抽象接口。
 ///
-/// Phase 4 阶段只有 [TemplateJournalGenerationService] 一个实现，纯本地模板拼接，不调用任何 AI。
-///
-/// 等你确定了后端方案（一个能替你保管 Claude API Key 的服务端/云函数）之后，
-/// 只需要新写一个 `RemoteJournalGenerationService implements JournalGenerationService`，
-/// 内部去 fetch 你自己的后端接口，然后把 `journalGenerationServiceProvider`（见 controller 文件）
-/// 指向新的实现即可，UI 和 controller 完全不用改。
+/// 两个实现：
+/// - [TemplateJournalGenerationService]：纯本地模板拼接，不调用任何 AI，默认渠道
+/// - [AIJournalGenerationService]：调用用户在设置里自己配置的 AI（[AIService]）
 abstract class JournalGenerationService {
   Future<JournalDraft> generate({
     required String tripTitle,
@@ -37,7 +36,6 @@ class TemplateJournalGenerationService implements JournalGenerationService {
     required List<Expense> expenses,
     required JournalStyle style,
   }) async {
-    // 模拟生成过程有个短暂延迟，避免界面上"生成"按钮点一下就瞬间完事，交互上更自然
     await Future.delayed(const Duration(milliseconds: 900));
 
     final byDay = <int, List<Moment>>{};
@@ -108,6 +106,74 @@ class TemplateJournalGenerationService implements JournalGenerationService {
         return '以上为本次旅程的完整记录，费用明细见下方汇总。';
       case JournalStyle.concise:
         return '旅程结束，感谢一路的记录。';
+    }
+  }
+}
+
+/// 真 AI 版本：把随记内容整理成 prompt，交给用户自己配置的 [AIService] 生成。
+///
+/// 要求模型只返回 JSON（title + paragraphs 数组），方便稳定解析；
+/// 如果模型没有听话返回合法 JSON，会 fallback 把整段返回文本当成唯一一段正文，
+/// 保证至少能看到内容，不会白屏报错。
+class AIJournalGenerationService implements JournalGenerationService {
+  final AIService aiService;
+
+  AIJournalGenerationService(this.aiService);
+
+  @override
+  Future<JournalDraft> generate({
+    required String tripTitle,
+    required String destination,
+    required List<Moment> moments,
+    required List<Expense> expenses,
+    required JournalStyle style,
+  }) async {
+    final byDay = <int, List<Moment>>{};
+    for (final m in moments) {
+      byDay.putIfAbsent(m.dayNumber, () => []).add(m);
+    }
+    final days = byDay.keys.toList()..sort();
+
+    final momentsText = days.isEmpty
+        ? '（这次旅程还没有随记内容）'
+        : days.map((day) {
+            final texts = byDay[day]!.map((m) => m.textContent.trim()).where((t) => t.isNotEmpty).join('；');
+            return 'Day $day：$texts';
+          }).join('\n');
+
+    final styleDesc = switch (style) {
+      JournalStyle.poetic => '文艺抒情风格，注重情感和意境描写',
+      JournalStyle.guide => '攻略实用风格，突出实用信息和建议',
+      JournalStyle.concise => '简洁记录风格，自然平实',
+    };
+
+    final prompt = '''
+你是一个旅行游记写手。请根据以下这次旅行的随手记录，帮用户整理成一篇游记。
+
+旅程名称：$tripTitle
+目的地：$destination
+风格要求：$styleDesc
+
+随记内容（按天）：
+$momentsText
+
+请只返回如下 JSON 格式，不要有任何其他文字、不要用 markdown 代码块包裹：
+{"title": "游记标题", "paragraphs": ["第一段正文", "第二段正文"]}
+''';
+
+    final raw = await aiService.complete(prompt: prompt, maxTokens: 1200);
+
+    try {
+      final cleaned = raw.trim().replaceAll(RegExp(r'^```json'), '').replaceAll(RegExp(r'```$'), '').trim();
+      final json = jsonDecode(cleaned) as Map<String, dynamic>;
+      final title = json['title'] as String? ?? tripTitle;
+      final paragraphs = (json['paragraphs'] as List?)?.map((e) => '$e').toList();
+      if (paragraphs == null || paragraphs.isEmpty) {
+        return JournalDraft(title: title, paragraphs: [raw]);
+      }
+      return JournalDraft(title: title, paragraphs: paragraphs);
+    } catch (_) {
+      return JournalDraft(title: tripTitle, paragraphs: [raw.isEmpty ? '生成失败，请检查 API Key 或网络后重试。' : raw]);
     }
   }
 }

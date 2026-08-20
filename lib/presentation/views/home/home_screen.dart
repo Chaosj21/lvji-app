@@ -32,7 +32,7 @@ class HomeScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.map_outlined, size: 56, color: Theme.of(context).colorScheme.primary.withOpacity(.4)),
+                  Icon(Icons.map_outlined, size: 56, color: Theme.of(context).colorScheme.primary.withOpacity(.35)),
                   const SizedBox(height: 16),
                   Text(AppStrings.noTripsYet, style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 8),
@@ -49,10 +49,7 @@ class HomeScreen extends ConsumerWidget {
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: trips.length,
-            itemBuilder: (context, index) {
-              final trip = trips[index];
-              return _TripCard(trip: trip);
-            },
+            itemBuilder: (context, index) => _TicketTripCard(trip: trips[index]),
           );
         },
       ),
@@ -72,9 +69,22 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _TripCard extends StatelessWidget {
+/// 登机牌/车票风格的旅程卡片：左边主体信息，右边目的地缩略图，
+/// 中间用虚线撕口分隔，呼应"旅行"这个主题。
+class _TicketTripCard extends StatelessWidget {
   final Trip trip;
-  const _TripCard({required this.trip});
+  const _TicketTripCard({required this.trip});
+
+  // 用 trip.id 的哈希值稳定选一个渐变色，同一个旅程每次打开颜色都一样，
+  // 不同旅程之间有视觉区分度（模拟"目的地缩略图"，不依赖网络图片）
+  static const _gradients = [
+    [Color(0xFF3E6B6A), Color(0xFF8FA98F), Color(0xFFD8C79A)], // 草原绿
+    [Color(0xFF8FA9C9), Color(0xFFDCE3D0), Color(0xFFD8C79A)], // 天空蓝
+    [Color(0xFFD8A9C9), Color(0xFFE8D3B0), Color(0xFF9FC9D8)], // 樱花粉
+    [Color(0xFFC9A9D8), Color(0xFFD8C79A), Color(0xFF8FA98F)], // 黄昏紫
+  ];
+
+  List<Color> get _gradient => _gradients[trip.id.hashCode.abs() % _gradients.length];
 
   String get _statusLabel {
     switch (trip.status) {
@@ -90,7 +100,7 @@ class _TripCard extends StatelessWidget {
   Color _statusColor(BuildContext context) {
     switch (trip.status) {
       case 1:
-        return Theme.of(context).colorScheme.secondary;
+        return Theme.of(context).colorScheme.secondary; // 橙色，进行中最显眼
       case 2:
         return Theme.of(context).colorScheme.onSurface.withOpacity(.4);
       default:
@@ -98,60 +108,185 @@ class _TripCard extends StatelessWidget {
     }
   }
 
+  /// destination 字段存的是逗号分隔的城市列表（比如"乌兰察布,呼和浩特"），
+  /// 有多个就显示成"出发地 → 目的地"，只有一个就直接显示
+  String get _routeLabel {
+    final parts = trip.destination.split(RegExp(r'[,，]')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    if (parts.length >= 2) return parts.join(' → ');
+    return parts.isNotEmpty ? parts.first : trip.destination;
+  }
+
+  String _footerText() {
+    final totalDays = trip.endDate.difference(trip.startDate).inDays + 1;
+    switch (trip.status) {
+      case 1:
+        final now = DateTime.now();
+        final start = DateTime(trip.startDate.year, trip.startDate.month, trip.startDate.day);
+        final day = (DateTime(now.year, now.month, now.day).difference(start).inDays + 1).clamp(1, totalDays);
+        return '进行中 · Day $day/$totalDays';
+      case 2:
+        return '已完成 · 共 $totalDays 天';
+      default:
+        final now = DateTime.now();
+        final diff = trip.startDate.difference(now).inDays;
+        return diff > 0 ? '距出发还有 $diff 天' : '即将出发 · 共 $totalDays 天';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final dateFmt = DateFormat('MM.dd');
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+    final statusColor = _statusColor(context);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      height: 128,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: theme.dividerColor),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 10, offset: const Offset(0, 3)),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
         onTap: () => context.push('/trip/${trip.id}'),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ---- 主体信息 ----
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: _statusColor(context).withOpacity(.12),
+                            color: statusColor.withOpacity(.12),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             _statusLabel,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: _statusColor(context),
-                            ),
+                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: statusColor),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(trip.title, style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 4),
-                    Text(trip.destination, style: Theme.of(context).textTheme.bodyMedium),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${dateFmt.format(trip.startDate)} - ${dateFmt.format(trip.endDate)}',
-                      style: Theme.of(context).textTheme.bodySmall,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(trip.title,
+                            style: theme.textTheme.titleLarge?.copyWith(fontSize: 17),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 3),
+                        Text(_routeLabel, style: theme.textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today_outlined, size: 11, color: theme.colorScheme.onSurface.withOpacity(.4)),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${dateFmt.format(trip.startDate)} - ${dateFmt.format(trip.endDate)}',
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _footerText(),
+                            style: theme.textTheme.bodySmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right),
-            ],
-          ),
+            ),
+
+            // ---- 撕口分隔线 + 缺口 ----
+            SizedBox(
+              width: 14,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(size: const Size(1.5, double.infinity), painter: _DashedLinePainter(color: theme.dividerColor)),
+                  Positioned(top: -7, child: _notch(theme)),
+                  Positioned(bottom: -7, child: _notch(theme)),
+                ],
+              ),
+            ),
+
+            // ---- 目的地缩略图 ----
+            SizedBox(
+              width: 92,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: _gradient,
+                  ),
+                ),
+                alignment: Alignment.bottomLeft,
+                padding: const EdgeInsets.all(8),
+                child: Text(
+                  _routeLabel.split(' → ').last,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    shadows: [Shadow(color: Colors.black38, blurRadius: 4)],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+
+  Widget _notch(ThemeData theme) {
+    return Container(
+      width: 14,
+      height: 14,
+      decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, shape: BoxShape.circle),
+    );
+  }
+}
+
+class _DashedLinePainter extends CustomPainter {
+  final Color color;
+  const _DashedLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.2;
+    const dashHeight = 4.0;
+    const dashSpace = 4.0;
+    double y = 0;
+    while (y < size.height) {
+      canvas.drawLine(Offset(size.width / 2, y), Offset(size.width / 2, y + dashHeight), paint);
+      y += dashHeight + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class CreateTripDialog extends ConsumerStatefulWidget {
@@ -201,7 +336,7 @@ class _CreateTripDialogState extends ConsumerState<CreateTripDialog> {
             ),
             const SizedBox(height: 16),
             TextField(
-              decoration: const InputDecoration(labelText: AppStrings.tripDestination),
+              decoration: const InputDecoration(labelText: AppStrings.tripDestination, hintText: '可以填多个城市，用逗号分开'),
               onChanged: (value) => ref.read(newTripFormProvider.notifier).setDestination(value),
             ),
             const SizedBox(height: 16),
