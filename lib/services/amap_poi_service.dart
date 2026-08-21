@@ -14,8 +14,10 @@ import 'package:amap_flutter_base/amap_flutter_base.dart';
 /// 调用方不应因此崩溃。
 class AMapPOIService {
   final Dio _dio;
+  final String? overrideKey;
 
-  AMapPOIService({Dio? dio})
+  /// [overrideKey]：用户在设置里手工配置的 Web服务 Key，优先于编译时写死的 [AMapKeys.webServiceKey]。
+  AMapPOIService({Dio? dio, this.overrideKey})
       : _dio = dio ?? Dio(
           BaseOptions(
             baseUrl: 'https://restapi.amap.com/v3',
@@ -24,7 +26,9 @@ class AMapPOIService {
           ),
         );
 
-  bool get isConfigured => AMapKeys.webServiceKey.isNotEmpty;
+  String get _effectiveKey => (overrideKey != null && overrideKey!.isNotEmpty) ? overrideKey! : AMapKeys.webServiceKey;
+
+  bool get isConfigured => _effectiveKey.isNotEmpty;
 
   /// 模糊搜索 POI 地点。
   ///
@@ -52,7 +56,7 @@ class AMapPOIService {
         'city': city,
         'citylimit': 'true',
         'type': types,
-        'key': AMapKeys.webServiceKey,
+        'key': _effectiveKey,
         'output': 'JSON',
         'offset': limit.toString(),
         'page': '1',

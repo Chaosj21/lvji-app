@@ -5,6 +5,7 @@ import 'packing_template_settings_screen.dart';
 import '../../controllers/ai_config_controller.dart';
 import '../../../domain/ai_config.dart';
 import '../../../services/ai_service.dart';
+import '../../controllers/amap_config_controller.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -21,12 +22,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _testing = false;
   bool _controllersInited = false;
 
+  late TextEditingController _amapKeyController;
+  bool _amapControllerInited = false;
+  bool _obscureAmapKey = true;
+
   @override
   void dispose() {
     if (_controllersInited) {
       _apiKeyController.dispose();
       _baseUrlController.dispose();
       _modelController.dispose();
+    }
+    if (_amapControllerInited) {
+      _amapKeyController.dispose();
     }
     super.dispose();
   }
@@ -45,6 +53,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final aiConfig = ref.watch(aiConfigControllerProvider);
     final aiConfigController = ref.read(aiConfigControllerProvider.notifier);
     _initControllersIfNeeded(aiConfig);
+
+    final amapKey = ref.watch(amapConfigControllerProvider);
+    final amapConfigController = ref.read(amapConfigControllerProvider.notifier);
+    if (!_amapControllerInited) {
+      _amapKeyController = TextEditingController(text: amapKey);
+      _amapControllerInited = true;
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),
@@ -65,6 +80,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 24),
           _sectionLabel('AI 服务'),
           _buildAiSection(context, aiConfig, aiConfigController),
+
+          const SizedBox(height: 24),
+          _sectionLabel('地图服务'),
+          _buildAmapSection(context, amapKey, amapConfigController),
 
           const SizedBox(height: 24),
           _sectionLabel('通知'),
@@ -100,6 +119,85 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _group([
             _navRow(title: '关于旅记', onTap: () => _showAbout(context)),
           ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAmapSection(BuildContext context, String currentKey, AMapConfigController controller) {
+    final theme = Theme.of(context);
+    final hasKey = currentKey.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: theme.dividerColor.withOpacity(.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '地点搜索、路线规划这些功能用的是高德 Web服务 Key，可以在这里配置你自己的。'
+            '地图显示用的是另一把 Key，写死在 App 安装包里，这里改不了。',
+            style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _amapKeyController,
+            obscureText: _obscureAmapKey,
+            decoration: InputDecoration(
+              labelText: '高德 Web服务 Key',
+              hintText: '在高德开放平台申请，服务平台选"Web服务"',
+              suffixIcon: IconButton(
+                icon: Icon(_obscureAmapKey ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 18),
+                onPressed: () => setState(() => _obscureAmapKey = !_obscureAmapKey),
+              ),
+            ),
+            style: const TextStyle(fontSize: 13),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(
+                hasKey ? Icons.check_circle : Icons.info_outline,
+                size: 14,
+                color: hasKey ? const Color(0xFF34C759) : theme.colorScheme.onSurface.withOpacity(.4),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                hasKey ? '已配置，地点搜索和路线规划走这把 Key' : '未配置，先用 App 自带的 Key（如果有的话）',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                await controller.saveKey(_amapKeyController.text);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已保存')));
+                }
+              },
+              child: const Text('保存'),
+            ),
+          ),
+          if (hasKey) ...[
+            const SizedBox(height: 6),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () async {
+                  await controller.clearKey();
+                  setState(() => _amapKeyController.clear());
+                },
+                child: const Text('清除，恢复用 App 自带的 Key'),
+              ),
+            ),
+          ],
         ],
       ),
     );

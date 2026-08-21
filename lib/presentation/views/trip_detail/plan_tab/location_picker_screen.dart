@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:amap_flutter_map/amap_flutter_map.dart';
 import 'package:amap_flutter_base/amap_flutter_base.dart';
 import '../../../../services/amap_poi_service.dart';
+import '../../../controllers/amap_config_controller.dart';
 
 /// 地图选点页：用户在地图上点一下，确定这个点作为新地点的经纬度。
 ///
@@ -11,7 +13,7 @@ import '../../../../services/amap_poi_service.dart';
 ///
 /// ⚠️ 依赖 AndroidManifest.xml 里配置好高德 Key（meta-data name="com.amap.api.v2.apikey"），
 /// 具体配置步骤见 PHASE2_5_NOTES.md，这一步无法用 patch 自动完成，需要你手动改一次。
-class LocationPickerScreen extends StatefulWidget {
+class LocationPickerScreen extends ConsumerStatefulWidget {
   /// 初始定位中心点，一般传当前城市或者上一个已添加地点的坐标，让地图打开时别一片空白
   final LatLng initialCenter;
 
@@ -21,10 +23,10 @@ class LocationPickerScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<LocationPickerScreen> createState() => _LocationPickerScreenState();
+  ConsumerState<LocationPickerScreen> createState() => _LocationPickerScreenState();
 }
 
-class _LocationPickerScreenState extends State<LocationPickerScreen> {
+class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
   AMapController? _controller;
   LatLng? _pickedLatLng;
   PoiResultItem? _pickedPoi;
@@ -36,7 +38,14 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
   bool _searching = false;
   String? _searchError;
 
-  final _poiService = AMapPOIService();
+  late final AMapPOIService _poiService;
+
+  @override
+  void initState() {
+    super.initState();
+    final configuredKey = ref.read(amapConfigControllerProvider);
+    _poiService = AMapPOIService(overrideKey: configuredKey.isEmpty ? null : configuredKey);
+  }
 
   @override
   void dispose() {

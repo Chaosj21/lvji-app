@@ -48,10 +48,22 @@ class HomeScreen extends ConsumerWidget {
             );
           }
 
-          return ListView.builder(
+          // 按年份分组，年份新的排前面；组内按开始日期新的排前面
+          final sorted = List<Trip>.from(trips)..sort((a, b) => b.startDate.compareTo(a.startDate));
+          final grouped = <int, List<Trip>>{};
+          for (final t in sorted) {
+            grouped.putIfAbsent(t.startDate.year, () => []).add(t);
+          }
+          final years = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+
+          return ListView(
             padding: const EdgeInsets.all(16),
-            itemCount: trips.length,
-            itemBuilder: (context, index) => _TicketTripCard(trip: trips[index]),
+            children: [
+              for (final year in years) ...[
+                _YearHeader(year: year),
+                ...grouped[year]!.map((t) => _TicketTripCard(trip: t)),
+              ],
+            ],
           );
         },
       ),
@@ -73,6 +85,46 @@ class HomeScreen extends ConsumerWidget {
 
 /// 登机牌/车票风格的旅程卡片：左边主体信息，右边目的地缩略图（有封面照片用照片，没有就用渐变色占位），
 /// 中间用虚线撕口分隔。
+/// 年份分组标题，轻微的视觉区分——年份数字 + 一条延伸的分割线，不抢主体卡片的风头
+class _YearHeader extends StatelessWidget {
+  final int year;
+  const _YearHeader({required this.year});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isCurrentYear = year == DateTime.now().year;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 12),
+      child: Row(
+        children: [
+          Text(
+            '$year',
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              color: isCurrentYear ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(.55),
+            ),
+          ),
+          if (isCurrentYear) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withOpacity(.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text('今年', style: TextStyle(fontSize: 10, color: theme.colorScheme.primary, fontWeight: FontWeight.w600)),
+            ),
+          ],
+          const SizedBox(width: 10),
+          Expanded(child: Divider(color: theme.dividerColor, thickness: 1)),
+        ],
+      ),
+    );
+  }
+}
+
 class _TicketTripCard extends StatelessWidget {
   final Trip trip;
   const _TicketTripCard({required this.trip});

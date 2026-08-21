@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
 import '../../../controllers/location_controller.dart';
 import '../../../controllers/packing_controller.dart';
@@ -276,19 +277,72 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       itemBuilder: (context, index) {
         final loc = locations[index];
         final next = index < locations.length - 1 ? locations[index + 1] : null;
-        return Padding(
+        return Slidable(
           key: ValueKey(loc.id),
-          padding: const EdgeInsets.only(bottom: 10),
-          child: LocationCardWidget(
-            index: index,
-            location: loc,
-            nextLocation: next,
-            onNotesChanged: (notes) => controller.updateNotes(loc.id, notes),
-            onDelete: () => controller.deleteLocation(loc.id),
+          endActionPane: ActionPane(
+            motion: const DrawerMotion(),
+            extentRatio: 0.46,
+            children: [
+              SlidableAction(
+                onPressed: (_) => _showMoveToDayDialog(context, controller, loc),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                icon: Icons.swap_horiz,
+                label: '移动',
+                borderRadius: BorderRadius.circular(14),
+              ),
+              SlidableAction(
+                onPressed: (_) => controller.deleteLocation(loc.id),
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Colors.white,
+                icon: Icons.delete_outline,
+                label: '删除',
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: LocationCardWidget(
+              index: index,
+              location: loc,
+              nextLocation: next,
+              onNotesChanged: (notes) => controller.updateNotes(loc.id, notes),
+              onDelete: () => controller.deleteLocation(loc.id),
+            ),
           ),
         );
       },
     );
+  }
+
+  Future<void> _showMoveToDayDialog(BuildContext context, LocationsController controller, Location loc) async {
+    final target = await showDialog<int>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text('把"${loc.name}"移动到'),
+        children: [
+          for (var d = 1; d <= _totalDays; d++)
+            if (d != _selectedDay)
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, d),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8, height: 8,
+                      decoration: BoxDecoration(color: dayColors[(d - 1) % dayColors.length], shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 10),
+                    Text('Day $d'),
+                  ],
+                ),
+              ),
+        ],
+      ),
+    );
+    if (target != null) {
+      await controller.moveToDay(loc.id, target);
+    }
   }
 
   Widget _buildAiSuggestionCard(BuildContext context) {

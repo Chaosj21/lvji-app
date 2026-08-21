@@ -18,11 +18,16 @@ import '../../core/utils/logger.dart';
 /// 保证离线或 Key 出问题时功能不整体挂掉。
 class AMapDirectionService {
   final Dio _dio;
+  final String? overrideKey;
 
-  AMapDirectionService({Dio? dio})
+  /// [overrideKey]：用户在设置里手工配置的 Web服务 Key，优先于编译时写死的 [AMapKeys.webServiceKey]。
+  /// 不传就退回原来的 AMapKeys.webServiceKey（开发调试阶段的行为不变）。
+  AMapDirectionService({Dio? dio, this.overrideKey})
       : _dio = dio ?? Dio(BaseOptions(baseUrl: 'https://restapi.amap.com/v3', connectTimeout: const Duration(seconds: 8), receiveTimeout: const Duration(seconds: 8)));
 
-  bool get isConfigured => AMapKeys.webServiceKey.isNotEmpty;
+  String get _effectiveKey => (overrideKey != null && overrideKey!.isNotEmpty) ? overrideKey! : AMapKeys.webServiceKey;
+
+  bool get isConfigured => _effectiveKey.isNotEmpty;
 
   Future<ConnectorEstimate?> route({
     required LatLng from,
@@ -43,7 +48,7 @@ class AMapDirectionService {
       final resp = await _dio.get(endpoint, queryParameters: {
         'origin': '${from.longitude},${from.latitude}',
         'destination': '${to.longitude},${to.latitude}',
-        'key': AMapKeys.webServiceKey,
+        'key': _effectiveKey,
         'extensions': 'base',
       });
 

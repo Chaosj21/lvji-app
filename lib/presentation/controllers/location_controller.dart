@@ -94,6 +94,22 @@ class LocationsController extends StateNotifier<LocationsState> {
     await reload();
   }
 
+  /// 把某个地点从当前天移动到另一天，追加到目标天的末尾。
+  /// 原来那天剩下的地点顺序号会有空洞（比如 0,2,3），不影响显示排序，
+  /// 就不额外做一次重新编号了，保持改动最小。
+  Future<void> moveToDay(String locationId, int toDay) async {
+    final loc = await dao.getLocationById(locationId);
+    if (loc == null) return;
+    if (loc.dayNumber == toDay) return;
+
+    final targetCount = state.forDay(toDay).length;
+    await dao.updateLocation(loc.toCompanion(true).copyWith(
+          dayNumber: Value(toDay),
+          sequenceInDay: Value(targetCount),
+        ));
+    await reload();
+  }
+
   /// 拖拽排序：oldIndex/newIndex 遵循 Flutter ReorderableListView 的语义
   /// （newIndex 是"移除拖拽项之前"的目标下标，需要按官方文档做 -1 修正）
   Future<void> reorderDay(int day, int oldIndex, int newIndex) async {
