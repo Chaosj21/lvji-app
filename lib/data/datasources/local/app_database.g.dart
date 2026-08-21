@@ -157,6 +157,12 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _coverImageBytesMeta =
+      const VerificationMeta('coverImageBytes');
+  @override
+  late final GeneratedColumn<Uint8List> coverImageBytes =
+      GeneratedColumn<Uint8List>('cover_image_bytes', aliasedName, true,
+          type: DriftSqlType.blob, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -194,6 +200,7 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
         status,
         totalBudget,
         actualSpent,
+        coverImageBytes,
         createdAt,
         updatedAt,
         syncedToCloud
@@ -261,6 +268,12 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
           actualSpent.isAcceptableOrUnknown(
               data['actual_spent']!, _actualSpentMeta));
     }
+    if (data.containsKey('cover_image_bytes')) {
+      context.handle(
+          _coverImageBytesMeta,
+          coverImageBytes.isAcceptableOrUnknown(
+              data['cover_image_bytes']!, _coverImageBytesMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -302,6 +315,8 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
           .read(DriftSqlType.int, data['${effectivePrefix}total_budget']),
       actualSpent: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}actual_spent'])!,
+      coverImageBytes: attachedDatabase.typeMapping
+          .read(DriftSqlType.blob, data['${effectivePrefix}cover_image_bytes']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -327,6 +342,7 @@ class Trip extends DataClass implements Insertable<Trip> {
   final int status;
   final int? totalBudget;
   final int actualSpent;
+  final Uint8List? coverImageBytes;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool syncedToCloud;
@@ -340,6 +356,7 @@ class Trip extends DataClass implements Insertable<Trip> {
       required this.status,
       this.totalBudget,
       required this.actualSpent,
+      this.coverImageBytes,
       required this.createdAt,
       required this.updatedAt,
       required this.syncedToCloud});
@@ -359,6 +376,9 @@ class Trip extends DataClass implements Insertable<Trip> {
       map['total_budget'] = Variable<int>(totalBudget);
     }
     map['actual_spent'] = Variable<int>(actualSpent);
+    if (!nullToAbsent || coverImageBytes != null) {
+      map['cover_image_bytes'] = Variable<Uint8List>(coverImageBytes);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['synced_to_cloud'] = Variable<bool>(syncedToCloud);
@@ -380,6 +400,9 @@ class Trip extends DataClass implements Insertable<Trip> {
           ? const Value.absent()
           : Value(totalBudget),
       actualSpent: Value(actualSpent),
+      coverImageBytes: coverImageBytes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverImageBytes),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       syncedToCloud: Value(syncedToCloud),
@@ -399,6 +422,7 @@ class Trip extends DataClass implements Insertable<Trip> {
       status: serializer.fromJson<int>(json['status']),
       totalBudget: serializer.fromJson<int?>(json['totalBudget']),
       actualSpent: serializer.fromJson<int>(json['actualSpent']),
+      coverImageBytes: serializer.fromJson<Uint8List?>(json['coverImageBytes']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       syncedToCloud: serializer.fromJson<bool>(json['syncedToCloud']),
@@ -417,6 +441,7 @@ class Trip extends DataClass implements Insertable<Trip> {
       'status': serializer.toJson<int>(status),
       'totalBudget': serializer.toJson<int?>(totalBudget),
       'actualSpent': serializer.toJson<int>(actualSpent),
+      'coverImageBytes': serializer.toJson<Uint8List?>(coverImageBytes),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'syncedToCloud': serializer.toJson<bool>(syncedToCloud),
@@ -433,6 +458,7 @@ class Trip extends DataClass implements Insertable<Trip> {
           int? status,
           Value<int?> totalBudget = const Value.absent(),
           int? actualSpent,
+          Value<Uint8List?> coverImageBytes = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt,
           bool? syncedToCloud}) =>
@@ -446,6 +472,9 @@ class Trip extends DataClass implements Insertable<Trip> {
         status: status ?? this.status,
         totalBudget: totalBudget.present ? totalBudget.value : this.totalBudget,
         actualSpent: actualSpent ?? this.actualSpent,
+        coverImageBytes: coverImageBytes.present
+            ? coverImageBytes.value
+            : this.coverImageBytes,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         syncedToCloud: syncedToCloud ?? this.syncedToCloud,
@@ -465,6 +494,9 @@ class Trip extends DataClass implements Insertable<Trip> {
           data.totalBudget.present ? data.totalBudget.value : this.totalBudget,
       actualSpent:
           data.actualSpent.present ? data.actualSpent.value : this.actualSpent,
+      coverImageBytes: data.coverImageBytes.present
+          ? data.coverImageBytes.value
+          : this.coverImageBytes,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       syncedToCloud: data.syncedToCloud.present
@@ -485,6 +517,7 @@ class Trip extends DataClass implements Insertable<Trip> {
           ..write('status: $status, ')
           ..write('totalBudget: $totalBudget, ')
           ..write('actualSpent: $actualSpent, ')
+          ..write('coverImageBytes: $coverImageBytes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('syncedToCloud: $syncedToCloud')
@@ -503,6 +536,7 @@ class Trip extends DataClass implements Insertable<Trip> {
       status,
       totalBudget,
       actualSpent,
+      $driftBlobEquality.hash(coverImageBytes),
       createdAt,
       updatedAt,
       syncedToCloud);
@@ -519,6 +553,8 @@ class Trip extends DataClass implements Insertable<Trip> {
           other.status == this.status &&
           other.totalBudget == this.totalBudget &&
           other.actualSpent == this.actualSpent &&
+          $driftBlobEquality.equals(
+              other.coverImageBytes, this.coverImageBytes) &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.syncedToCloud == this.syncedToCloud);
@@ -534,6 +570,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
   final Value<int> status;
   final Value<int?> totalBudget;
   final Value<int> actualSpent;
+  final Value<Uint8List?> coverImageBytes;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<bool> syncedToCloud;
@@ -548,6 +585,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     this.status = const Value.absent(),
     this.totalBudget = const Value.absent(),
     this.actualSpent = const Value.absent(),
+    this.coverImageBytes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.syncedToCloud = const Value.absent(),
@@ -563,6 +601,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     this.status = const Value.absent(),
     this.totalBudget = const Value.absent(),
     this.actualSpent = const Value.absent(),
+    this.coverImageBytes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.syncedToCloud = const Value.absent(),
@@ -582,6 +621,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     Expression<int>? status,
     Expression<int>? totalBudget,
     Expression<int>? actualSpent,
+    Expression<Uint8List>? coverImageBytes,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<bool>? syncedToCloud,
@@ -597,6 +637,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
       if (status != null) 'status': status,
       if (totalBudget != null) 'total_budget': totalBudget,
       if (actualSpent != null) 'actual_spent': actualSpent,
+      if (coverImageBytes != null) 'cover_image_bytes': coverImageBytes,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (syncedToCloud != null) 'synced_to_cloud': syncedToCloud,
@@ -614,6 +655,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
       Value<int>? status,
       Value<int?>? totalBudget,
       Value<int>? actualSpent,
+      Value<Uint8List?>? coverImageBytes,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<bool>? syncedToCloud,
@@ -628,6 +670,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
       status: status ?? this.status,
       totalBudget: totalBudget ?? this.totalBudget,
       actualSpent: actualSpent ?? this.actualSpent,
+      coverImageBytes: coverImageBytes ?? this.coverImageBytes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       syncedToCloud: syncedToCloud ?? this.syncedToCloud,
@@ -665,6 +708,9 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     if (actualSpent.present) {
       map['actual_spent'] = Variable<int>(actualSpent.value);
     }
+    if (coverImageBytes.present) {
+      map['cover_image_bytes'] = Variable<Uint8List>(coverImageBytes.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -692,6 +738,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
           ..write('status: $status, ')
           ..write('totalBudget: $totalBudget, ')
           ..write('actualSpent: $actualSpent, ')
+          ..write('coverImageBytes: $coverImageBytes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('syncedToCloud: $syncedToCloud, ')
@@ -4432,6 +4479,7 @@ typedef $$TripsTableCreateCompanionBuilder = TripsCompanion Function({
   Value<int> status,
   Value<int?> totalBudget,
   Value<int> actualSpent,
+  Value<Uint8List?> coverImageBytes,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<bool> syncedToCloud,
@@ -4447,6 +4495,7 @@ typedef $$TripsTableUpdateCompanionBuilder = TripsCompanion Function({
   Value<int> status,
   Value<int?> totalBudget,
   Value<int> actualSpent,
+  Value<Uint8List?> coverImageBytes,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<bool> syncedToCloud,
@@ -4580,6 +4629,10 @@ class $$TripsTableFilterComposer extends Composer<_$AppDatabase, $TripsTable> {
 
   ColumnFilters<int> get actualSpent => $composableBuilder(
       column: $table.actualSpent, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<Uint8List> get coverImageBytes => $composableBuilder(
+      column: $table.coverImageBytes,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -4753,6 +4806,10 @@ class $$TripsTableOrderingComposer
   ColumnOrderings<int> get actualSpent => $composableBuilder(
       column: $table.actualSpent, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<Uint8List> get coverImageBytes => $composableBuilder(
+      column: $table.coverImageBytes,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -4799,6 +4856,9 @@ class $$TripsTableAnnotationComposer
 
   GeneratedColumn<int> get actualSpent => $composableBuilder(
       column: $table.actualSpent, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get coverImageBytes => $composableBuilder(
+      column: $table.coverImageBytes, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4976,6 +5036,7 @@ class $$TripsTableTableManager extends RootTableManager<
             Value<int> status = const Value.absent(),
             Value<int?> totalBudget = const Value.absent(),
             Value<int> actualSpent = const Value.absent(),
+            Value<Uint8List?> coverImageBytes = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<bool> syncedToCloud = const Value.absent(),
@@ -4991,6 +5052,7 @@ class $$TripsTableTableManager extends RootTableManager<
             status: status,
             totalBudget: totalBudget,
             actualSpent: actualSpent,
+            coverImageBytes: coverImageBytes,
             createdAt: createdAt,
             updatedAt: updatedAt,
             syncedToCloud: syncedToCloud,
@@ -5006,6 +5068,7 @@ class $$TripsTableTableManager extends RootTableManager<
             Value<int> status = const Value.absent(),
             Value<int?> totalBudget = const Value.absent(),
             Value<int> actualSpent = const Value.absent(),
+            Value<Uint8List?> coverImageBytes = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<bool> syncedToCloud = const Value.absent(),
@@ -5021,6 +5084,7 @@ class $$TripsTableTableManager extends RootTableManager<
             status: status,
             totalBudget: totalBudget,
             actualSpent: actualSpent,
+            coverImageBytes: coverImageBytes,
             createdAt: createdAt,
             updatedAt: updatedAt,
             syncedToCloud: syncedToCloud,

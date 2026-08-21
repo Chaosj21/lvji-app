@@ -5,6 +5,7 @@ import '../../../../core/constants/strings.dart';
 import 'plan_tab/plan_screen.dart';
 import 'moments_tab/moments_screen.dart';
 import 'journal_tab/journal_screen.dart';
+import 'edit_trip_dialog.dart';
 
 class TripDetailScreen extends ConsumerStatefulWidget {
   final String tripId;
@@ -22,7 +23,20 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   Widget build(BuildContext context) {
     final trip = ref.watch(tripDetailProvider(widget.tripId));
     return Scaffold(
-      appBar: AppBar(title: Text(trip.when(data: (t) => t?.title ?? '', loading: () => '', error: (_, __) => ''))),
+      appBar: AppBar(
+        leading: BackButton(onPressed: () => Navigator.of(context).maybePop()),
+        title: Text(trip.when(data: (t) => t?.title ?? '', loading: () => '', error: (_, __) => '')),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, size: 20),
+            tooltip: '编辑旅程信息',
+            onPressed: () => showDialog(
+              context: context,
+              builder: (context) => EditTripDialog(trip: trip.value!),
+            ),
+          ),
+        ],
+      ),
       body: trip.when(
         data: (tripData) {
           if (tripData == null) return const Center(child: Text('行程不存在'));

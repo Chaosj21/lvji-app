@@ -18,6 +18,7 @@ class Trips extends Table {
   IntColumn get status => integer().withDefault(const Constant(0))(); // 0:plan, 1:going, 2:done
   IntColumn get totalBudget => integer().nullable()();
   IntColumn get actualSpent => integer().withDefault(const Constant(0))();
+  BlobColumn get coverImageBytes => blob().nullable()(); // Phase 6 新增：旅程封面照
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get syncedToCloud => boolean().withDefault(const Constant(false))();
@@ -303,16 +304,13 @@ class PackingDao extends DatabaseAccessor<AppDatabase> with _$PackingDaoMixin {
   }
 }
 
-/// ✨ Phase 4 新增：后记 DAO
 @DriftAccessor(tables: [Journals])
 class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
   JournalDao(AppDatabase db) : super(db);
 
-  /// 每个 trip 只有一篇 journal（表里有 uniqueKeys 约束），没有就返回 null
   Future<Journal?> getByTrip(String tripId) =>
       (select(journals)..where((j) => j.tripId.equals(tripId))).getSingleOrNull();
 
-  /// 有则更新、无则插入（因为 tripId 是唯一键）
   Future<void> upsert(JournalsCompanion journal) async {
     final existing = await getByTrip(journal.tripId.value);
     if (existing == null) {
@@ -335,8 +333,19 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
 class AppDatabase extends _$AppDatabase {
   AppDatabase(QueryExecutor executor) : super(executor);
 
+  // Phase 6：schemaVersion 从 1 升到 2，新增 Trips.coverImageBytes 字段
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(trips, trips.coverImageBytes);
+          }
+        },
+      );
 }
 
 LazyDatabase _openConnection() {

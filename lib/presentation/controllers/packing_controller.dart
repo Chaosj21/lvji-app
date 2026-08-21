@@ -3,6 +3,7 @@ import 'package:drift/drift.dart' show Value;
 import '../../data/datasources/local/app_database.dart';
 import '../../core/constants/location_types.dart';
 import '../providers.dart';
+import 'packing_template_controller.dart';
 
 class PackingState {
   final Map<String, List<PackingChecklist>> byCategory;
@@ -25,8 +26,9 @@ class PackingState {
 class PackingController extends StateNotifier<PackingState> {
   final PackingDao dao;
   final String tripId;
+  final Map<String, List<String>> seedTemplate;
 
-  PackingController(this.dao, this.tripId) : super(const PackingState()) {
+  PackingController(this.dao, this.tripId, this.seedTemplate) : super(const PackingState()) {
     _loadOrSeed();
   }
 
@@ -34,10 +36,11 @@ class PackingController extends StateNotifier<PackingState> {
     state = state.copyWith(isLoading: true);
     var items = await dao.getByTrip(tripId);
 
-    // 首次进入这个旅程的物品清单页时，如果一条记录都没有，自动填充默认分类清单
+    // 首次进入这个旅程的物品清单页时，如果一条记录都没有，
+    // 用用户在"设置 → 默认物品清单模板"里配置的模板去填充（不是写死的常量了）
     if (items.isEmpty) {
       int order = 0;
-      for (final entry in defaultPackingCategories.entries) {
+      for (final entry in seedTemplate.entries) {
         for (final itemName in entry.value) {
           await dao.createItem(PackingChecklistsCompanion.insert(
             id: 'pack_${DateTime.now().microsecondsSinceEpoch}_$order',
@@ -99,5 +102,6 @@ final packingDaoProvider = Provider<PackingDao>((ref) {
 final packingControllerProvider =
     StateNotifierProvider.family<PackingController, PackingState, String>((ref, tripId) {
   final dao = ref.watch(packingDaoProvider);
-  return PackingController(dao, tripId);
+  final template = ref.watch(packingTemplateControllerProvider);
+  return PackingController(dao, tripId, template);
 });

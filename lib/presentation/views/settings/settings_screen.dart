@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../controllers/theme_controller.dart';
+import 'packing_template_settings_screen.dart';
 import '../../controllers/ai_config_controller.dart';
 import '../../../domain/ai_config.dart';
 import '../../../services/ai_service.dart';
@@ -71,6 +72,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _switchRow(icon: Icons.notifications_outlined, iconColor: const Color(0xFF0A84FF), title: '行程提醒', value: true, onChanged: (_) {}),
             _switchRow(icon: Icons.account_balance_wallet_outlined, iconColor: const Color(0xFFFF9500), title: '消费提醒', value: true, onChanged: (_) {}),
             _switchRow(icon: Icons.menu_book_outlined, iconColor: const Color(0xFF5E5CE6), title: '后记生成推送', value: false, onChanged: (_) {}),
+          ]),
+
+          const SizedBox(height: 24),
+          _sectionLabel('旅行偏好'),
+          _group([
+            _navRow(
+              icon: Icons.checklist_outlined,
+              iconColor: const Color(0xFF0A84FF),
+              title: '默认物品清单模板',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const PackingTemplateSettingsScreen()),
+              ),
+            ),
           ]),
 
           const SizedBox(height: 24),

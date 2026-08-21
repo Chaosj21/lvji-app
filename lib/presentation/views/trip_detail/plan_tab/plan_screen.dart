@@ -21,6 +21,9 @@ const List<Color> dayColors = [
   Color(0xFF5E5CE6),
 ];
 
+/// 0 代表"全部"总览，1..N 代表具体的 Day
+const int kAllDaysTab = 0;
+
 class PlanScreen extends ConsumerStatefulWidget {
   final String tripId;
   final Trip trip;
@@ -32,7 +35,7 @@ class PlanScreen extends ConsumerStatefulWidget {
 }
 
 class _PlanScreenState extends ConsumerState<PlanScreen> {
-  late int _selectedDay;
+  late int _selectedDay; // kAllDaysTab(0) 或 1..N
   late int _totalDays;
 
   @override
@@ -43,7 +46,6 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     _selectedDay = _currentDayNumber().clamp(1, _totalDays);
   }
 
-  /// 根据当前日期粗略判断"今天是第几天"，用于默认打开对应天数（对应此前"根据当前日期自动定位"的需求）
   int _currentDayNumber() {
     final now = DateTime.now();
     final start = DateTime(widget.trip.startDate.year, widget.trip.startDate.month, widget.trip.startDate.day);
@@ -64,15 +66,28 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         : ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
             children: [
-              // 天数切换
+              // 天数切换：最前面加一个"全部"
               SizedBox(
                 height: 40,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: _totalDays,
+                  itemCount: _totalDays + 1,
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
-                    final day = index + 1;
+                    if (index == 0) {
+                      final selected = _selectedDay == kAllDaysTab;
+                      return ChoiceChip(
+                        label: const Text('全部'),
+                        selected: selected,
+                        selectedColor: Theme.of(context).colorScheme.onSurface.withOpacity(.75),
+                        labelStyle: TextStyle(
+                          color: selected ? Colors.white : null,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        onSelected: (_) => setState(() => _selectedDay = kAllDaysTab),
+                      );
+                    }
+                    final day = index; // index 1 -> Day1 ...
                     final selected = day == _selectedDay;
                     final color = dayColors[(day - 1) % dayColors.length];
                     return ChoiceChip(
@@ -90,15 +105,19 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 地点列表（可拖拽排序）
-              _buildLocationList(context, locationsState, locationsController),
-
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: () => _showAddLocationDialog(context, locationsController),
-                icon: const Icon(Icons.add_location_alt_outlined, size: 18),
-                label: const Text('添加地点'),
-              ),
+              if (_selectedDay == kAllDaysTab) ...[
+                _buildOverviewSummary(context, locationsState),
+                const SizedBox(height: 14),
+                _buildAllDaysList(context, locationsState),
+              ] else ...[
+                _buildLocationList(context, locationsState, locationsController),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => _showAddLocationDialog(context, locationsController),
+                  icon: const Icon(Icons.add_location_alt_outlined, size: 18),
+                  label: const Text('添加地点'),
+                ),
+              ],
 
               const SizedBox(height: 24),
               _buildAiSuggestionCard(context),
@@ -109,6 +128,125 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               PackingChecklistWidget(tripId: widget.tripId, state: packingState),
             ],
           );
+  }
+
+  /// "全部"视图顶部的统计条：总地点数、总天数、已安排天数
+  Widget _buildOverviewSummary(BuildContext context, LocationsState state) {
+    final theme = Theme.of(context);
+    final totalLocations = state.byDay.values.fold<int>(0, (sum, list) => sum + list.length);
+    final plannedDays = state.byDay.entries.where((e) => e.value.isNotEmpty).length;
+
+    return Row(
+      children: [
+        _summaryCell(theme, '$totalLocations', '总地点数'),
+        const SizedBox(width: 8),
+        _summaryCell(theme, '$_totalDays', '全程天数'),
+        const SizedBox(width: 8),
+        _summaryCell(theme, '$plannedDays', '已安排天数'),
+      ],
+    );
+  }
+
+  Widget _summaryCell(ThemeData theme, String value, String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: theme.dividerColor),
+        ),
+        child: Column(
+          children: [
+            Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            Text(label, style: theme.textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// "全部"视图：把每天的地点按 Day 分组，只读展示（不支持拖拽/编辑，
+  /// 要改具体安排回到对应 Day 的页签操作），方便快速看完整行程走向。
+  Widget _buildAllDaysList(BuildContext context, LocationsState state) {
+    final theme = Theme.of(context);
+    final daysWithLocations = List.generate(_totalDays, (i) => i + 1)
+        .where((d) => state.forDay(d).isNotEmpty)
+        .toList();
+
+    if (daysWithLocations.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceVariant.withOpacity(.3),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Text('还没有安排任何地点，切到具体某一天点"添加地点"开始规划', style: TextStyle(color: Colors.grey), textAlign: TextAlign.center),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: daysWithLocations.map((day) {
+        final color = dayColors[(day - 1) % dayColors.length];
+        final locations = state.forDay(day);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                  const SizedBox(width: 6),
+                  Text('Day $day', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+                  const SizedBox(width: 6),
+                  Text('· ${locations.length} 个地点', style: theme.textTheme.bodySmall),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: theme.dividerColor),
+                ),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < locations.length; i++) ...[
+                      if (i > 0) Divider(height: 1, indent: 46, color: theme.dividerColor),
+                      _overviewLocationRow(theme, locations[i]),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _overviewLocationRow(ThemeData theme, Location loc) {
+    final type = LocationType.fromValue(loc.locationType);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 26, height: 26,
+            decoration: BoxDecoration(color: type.color, borderRadius: BorderRadius.circular(8)),
+            child: Icon(type.icon, color: Colors.white, size: 13),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(loc.name, style: const TextStyle(fontSize: 13.5), overflow: TextOverflow.ellipsis),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildLocationList(
@@ -178,21 +316,21 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
           ),
           const SizedBox(height: 10),
           const Text(
-            '接入 Claude API 后，这里会自动分析行程密度、驾驶时长、天气等给出建议。'
-            '当前 Phase 2 阶段先占位，具体接入方式见架构文档「AI 调用架构」一节。',
+            '接入自定义 AI 服务后，这里会根据当天已安排的地点给出简短建议。'
+            '没配置的话可以去"设置 → AI 服务"里填自己的 API Key。',
             style: TextStyle(color: Color(0xFFD9D2C1), fontSize: 12.5, height: 1.5),
           ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _generateAiDraft(context),
+              onPressed: _selectedDay == kAllDaysTab ? null : () => _generateAiDraft(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD9A94C),
                 foregroundColor: const Color(0xFF1B2A38),
               ),
               icon: const Icon(Icons.auto_awesome, size: 16),
-              label: const Text('生成行程建议'),
+              label: Text(_selectedDay == kAllDaysTab ? '切到具体某一天再生成建议' : '生成行程建议'),
             ),
           ),
         ],
@@ -249,7 +387,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
 ''';
       final result = await service.complete(prompt: prompt, maxTokens: 400);
       if (!context.mounted) return;
-      Navigator.pop(context); // 关闭 loading
+      Navigator.pop(context);
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -272,8 +410,8 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         ),
       );
     }
+  }
 
-    }
   void _showAddLocationDialog(BuildContext context, LocationsController controller) {
     showDialog(
       context: context,

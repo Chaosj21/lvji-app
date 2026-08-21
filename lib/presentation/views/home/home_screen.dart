@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../providers.dart';
 import '../../../core/constants/strings.dart';
@@ -69,19 +71,18 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-/// 登机牌/车票风格的旅程卡片：左边主体信息，右边目的地缩略图，
-/// 中间用虚线撕口分隔，呼应"旅行"这个主题。
+/// 登机牌/车票风格的旅程卡片：左边主体信息，右边目的地缩略图（有封面照片用照片，没有就用渐变色占位），
+/// 中间用虚线撕口分隔。
 class _TicketTripCard extends StatelessWidget {
   final Trip trip;
   const _TicketTripCard({required this.trip});
 
-  // 用 trip.id 的哈希值稳定选一个渐变色，同一个旅程每次打开颜色都一样，
-  // 不同旅程之间有视觉区分度（模拟"目的地缩略图"，不依赖网络图片）
+  // 没有封面照片时，用 trip.id 的哈希值稳定选一个渐变色占位
   static const _gradients = [
-    [Color(0xFF3E6B6A), Color(0xFF8FA98F), Color(0xFFD8C79A)], // 草原绿
-    [Color(0xFF8FA9C9), Color(0xFFDCE3D0), Color(0xFFD8C79A)], // 天空蓝
-    [Color(0xFFD8A9C9), Color(0xFFE8D3B0), Color(0xFF9FC9D8)], // 樱花粉
-    [Color(0xFFC9A9D8), Color(0xFFD8C79A), Color(0xFF8FA98F)], // 黄昏紫
+    [Color(0xFF3E6B6A), Color(0xFF8FA98F), Color(0xFFD8C79A)],
+    [Color(0xFF8FA9C9), Color(0xFFDCE3D0), Color(0xFFD8C79A)],
+    [Color(0xFFD8A9C9), Color(0xFFE8D3B0), Color(0xFF9FC9D8)],
+    [Color(0xFFC9A9D8), Color(0xFFD8C79A), Color(0xFF8FA98F)],
   ];
 
   List<Color> get _gradient => _gradients[trip.id.hashCode.abs() % _gradients.length];
@@ -100,7 +101,7 @@ class _TicketTripCard extends StatelessWidget {
   Color _statusColor(BuildContext context) {
     switch (trip.status) {
       case 1:
-        return Theme.of(context).colorScheme.secondary; // 橙色，进行中最显眼
+        return Theme.of(context).colorScheme.secondary;
       case 2:
         return Theme.of(context).colorScheme.onSurface.withOpacity(.4);
       default:
@@ -108,8 +109,6 @@ class _TicketTripCard extends StatelessWidget {
     }
   }
 
-  /// destination 字段存的是逗号分隔的城市列表（比如"乌兰察布,呼和浩特"），
-  /// 有多个就显示成"出发地 → 目的地"，只有一个就直接显示
   String get _routeLabel {
     final parts = trip.destination.split(RegExp(r'[,，]')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
     if (parts.length >= 2) return parts.join(' → ');
@@ -156,7 +155,6 @@ class _TicketTripCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ---- 主体信息 ----
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
@@ -213,7 +211,6 @@ class _TicketTripCard extends StatelessWidget {
               ),
             ),
 
-            // ---- 撕口分隔线 + 缺口 ----
             SizedBox(
               width: 14,
               child: Stack(
@@ -226,31 +223,29 @@ class _TicketTripCard extends StatelessWidget {
               ),
             ),
 
-            // ---- 目的地缩略图 ----
+            // ---- 目的地缩略图：有封面照片用真照片，没有就用渐变色占位 ----
             SizedBox(
               width: 92,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: _gradient,
-                  ),
-                ),
-                alignment: Alignment.bottomLeft,
-                padding: const EdgeInsets.all(8),
-                child: Text(
-                  _routeLabel.split(' → ').last,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    shadows: [Shadow(color: Colors.black38, blurRadius: 4)],
-                  ),
-                ),
-              ),
+              child: trip.coverImageBytes != null
+                  ? Image.memory(trip.coverImageBytes!, fit: BoxFit.cover)
+                  : Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: _gradient),
+                      ),
+                      alignment: Alignment.bottomLeft,
+                      padding: const EdgeInsets.all(8),
+                      child: Text(
+                        _routeLabel.split(' → ').last,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          shadows: [Shadow(color: Colors.black38, blurRadius: 4)],
+                        ),
+                      ),
+                    ),
             ),
           ],
         ),
@@ -318,10 +313,38 @@ class _CreateTripDialogState extends ConsumerState<CreateTripDialog> {
     }
   }
 
+  Future<void> _pickCoverImage() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('拍照'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('从相册选择'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    final file = await ImagePicker().pickImage(source: source, maxWidth: 1600, imageQuality: 85);
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    ref.read(newTripFormProvider.notifier).setCoverImage(bytes);
+  }
+
   @override
   Widget build(BuildContext context) {
     final formState = ref.watch(newTripFormProvider);
     final dateFmt = DateFormat('yyyy.MM.dd');
+    final theme = Theme.of(context);
 
     return AlertDialog(
       title: const Text(AppStrings.createTrip),
@@ -330,6 +353,33 @@ class _CreateTripDialogState extends ConsumerState<CreateTripDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 封面照片
+            InkWell(
+              onTap: _pickCoverImage,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                height: 100,
+                width: double.infinity,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: theme.dividerColor),
+                  color: theme.colorScheme.surfaceVariant.withOpacity(.3),
+                ),
+                child: formState.coverImageBytes != null
+                    ? Image.memory(formState.coverImageBytes!, fit: BoxFit.cover, width: double.infinity)
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_photo_alternate_outlined, color: theme.colorScheme.onSurface.withOpacity(.4)),
+                          const SizedBox(height: 4),
+                          Text('添加封面照片（可选）', style: theme.textTheme.bodySmall),
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             TextField(
               decoration: const InputDecoration(labelText: AppStrings.tripName),
               onChanged: (value) => ref.read(newTripFormProvider.notifier).setTitle(value),
@@ -348,27 +398,19 @@ class _CreateTripDialogState extends ConsumerState<CreateTripDialog> {
                   _start != null && _end != null
                       ? '${dateFmt.format(_start!)} - ${dateFmt.format(_end!)}'
                       : '点击选择日期范围',
-                  style: TextStyle(
-                    color: _start != null ? null : Theme.of(context).hintColor,
-                  ),
+                  style: TextStyle(color: _start != null ? null : Theme.of(context).hintColor),
                 ),
               ),
             ),
             if (formState.error != null) ...[
               const SizedBox(height: 12),
-              Text(
-                formState.error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13),
-              ),
+              Text(formState.error!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13)),
             ],
           ],
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text(AppStrings.cancel),
-        ),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text(AppStrings.cancel)),
         ElevatedButton(
           onPressed: formState.isSubmitting
               ? null
@@ -380,11 +422,7 @@ class _CreateTripDialogState extends ConsumerState<CreateTripDialog> {
                   }
                 },
           child: formState.isSubmitting
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
               : const Text(AppStrings.create),
         ),
       ],

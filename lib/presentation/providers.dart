@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/drift.dart' show LazyDatabase;
@@ -35,12 +36,6 @@ final expenseDaoProvider = Provider<ExpenseDao>((ref) {
   return db.expenseDao;
 });
 
-// ============ Repository Providers (Phase 1: Only define, implementation comes later) ============
-// TODO: Implement repositories in Phase 1
-
-// ============ Service Providers (Phase 1: Stubs) ============
-// TODO: Implement services in later phases (Map, AI, Location, etc.)
-
 // ============ Auth State ============
 final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier();
@@ -74,8 +69,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(AuthState());
 
   Future<void> login(String email, String password) async {
-    // TODO: Implement real login logic
-    // For Phase 1, just update state
     state = state.copyWith(
       isLoggedIn: true,
       userId: 'user_${DateTime.now().millisecondsSinceEpoch}',
@@ -84,7 +77,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> register(String email, String password, String name) async {
-    // TODO: Implement real register logic
     state = state.copyWith(
       isLoggedIn: true,
       userId: 'user_${DateTime.now().millisecondsSinceEpoch}',
@@ -121,6 +113,7 @@ class NewTripFormState {
   final DateTime? endDate;
   final String description;
   final int? totalBudget;
+  final Uint8List? coverImageBytes; // ✨ Phase 6 新增
   final bool isSubmitting;
   final String? error;
 
@@ -131,6 +124,7 @@ class NewTripFormState {
     this.endDate,
     this.description = '',
     this.totalBudget,
+    this.coverImageBytes,
     this.isSubmitting = false,
     this.error,
   });
@@ -142,6 +136,7 @@ class NewTripFormState {
     DateTime? endDate,
     String? description,
     int? totalBudget,
+    Uint8List? coverImageBytes,
     bool? isSubmitting,
     String? error,
   }) {
@@ -152,8 +147,9 @@ class NewTripFormState {
       endDate: endDate ?? this.endDate,
       description: description ?? this.description,
       totalBudget: totalBudget ?? this.totalBudget,
+      coverImageBytes: coverImageBytes ?? this.coverImageBytes,
       isSubmitting: isSubmitting ?? this.isSubmitting,
-      error: error ?? this.error,
+      error: error,
     );
   }
 
@@ -171,6 +167,7 @@ class NewTripFormNotifier extends StateNotifier<NewTripFormState> {
   void setEndDate(DateTime date) => state = state.copyWith(endDate: date, error: null);
   void setDescription(String desc) => state = state.copyWith(description: desc, error: null);
   void setTotalBudget(int? budget) => state = state.copyWith(totalBudget: budget, error: null);
+  void setCoverImage(Uint8List? bytes) => state = state.copyWith(coverImageBytes: bytes, error: null);
 
   Future<bool> submit() async {
     if (!state.isValid) {
@@ -192,6 +189,7 @@ class NewTripFormNotifier extends StateNotifier<NewTripFormState> {
         endDate: Value(state.endDate!),
         description: state.description.isEmpty ? const Value.absent() : Value(state.description),
         totalBudget: state.totalBudget != null ? Value(state.totalBudget!) : const Value.absent(),
+        coverImageBytes: Value(state.coverImageBytes),
         status: const Value(0), // plan
       ));
 
