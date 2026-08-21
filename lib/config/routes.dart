@@ -5,15 +5,33 @@ import '../presentation/views/login/register_screen.dart';
 import '../presentation/views/home/home_screen.dart';
 import '../presentation/views/trip_detail/trip_detail_screen.dart';
 import '../presentation/views/settings/settings_screen.dart';
+import '../presentation/views/account/account_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final shellNavigatorKey = GlobalKey<NavigatorState>();
 
+// 全局登录状态（用于路由判断）
+bool isAuthenticated = false;
+void setAuthenticated(bool value) => isAuthenticated = value;
+
+// 用于触发路由刷新的可监听对象
+class AuthRefreshNotifier extends ChangeNotifier {
+  void notify() => notifyListeners();
+}
+
+final authRefreshNotifier = AuthRefreshNotifier();
+
 final router = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: '/login',
-  redirect: (context, state) async {
-    // TODO(Phase 1+): 接入真实的持久化登录态判断
+  refreshListenable: authRefreshNotifier,
+  redirect: (context, state) {
+    final isLoggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/register';
+    if (isAuthenticated) {
+      if (isLoggingIn) return '/';
+    } else {
+      if (!isLoggingIn) return '/login';
+    }
     return null;
   },
   routes: [
@@ -49,6 +67,11 @@ final router = GoRouter(
           path: '/settings',
           name: 'settings',
           builder: (context, state) => const SettingsScreen(),
+        ),
+        GoRoute(
+          path: '/account',
+          name: 'account',
+          builder: (context, state) => const AccountScreen(),
         ),
       ],
     ),

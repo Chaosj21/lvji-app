@@ -6,6 +6,7 @@ import '../../controllers/ai_config_controller.dart';
 import '../../../domain/ai_config.dart';
 import '../../../services/ai_service.dart';
 import '../../controllers/amap_config_controller.dart';
+import '../account/account_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -110,7 +111,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 24),
           _sectionLabel('账户'),
           _group([
-            _navRow(icon: Icons.person_outline, iconColor: const Color(0xFF34C759), title: '账号与安全', onTap: () => _todo(context)),
+            _navRow(icon: Icons.person_outline, iconColor: const Color(0xFF34C759), title: '账号与安全', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountScreen()))),
             _navRow(icon: Icons.group_outlined, iconColor: const Color(0xFF34C759), title: '同行人管理', onTap: () => _todo(context)),
             _navRow(icon: Icons.cloud_outlined, iconColor: const Color(0xFF8E8E93), title: '数据与备份', onTap: () => _todo(context)),
           ]),

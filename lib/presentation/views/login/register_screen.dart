@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers.dart';
 import '../../../core/constants/strings.dart';
+import '../../../config/routes.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -55,6 +56,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     try {
       await ref.read(authStateProvider.notifier).register(email, password, name);
+      setAuthenticated(true);
       if (mounted) context.go('/');
     } catch (e) {
       setState(() => _error = '注册失败：$e');

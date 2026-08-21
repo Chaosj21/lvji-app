@@ -5,7 +5,13 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/drift.dart' show LazyDatabase;
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/datasources/local/app_database.dart';
+
+// 登录状态持久化 key
+const _kLoggedInKey = 'auth_logged_in';
+const _kUserIdKey = 'auth_user_id';
+const _kEmailKey = 'auth_email';
 
 // ============ Database Provider ============
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -66,26 +72,52 @@ class AuthState {
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier() : super(AuthState());
+  AuthNotifier() : super(AuthState(isLoggedIn: false)) {
+    _loadSession();
+  }
+
+  Future<void> _loadSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final loggedIn = prefs.getBool(_kLoggedInKey) ?? false;
+      final userId = prefs.getString(_kUserIdKey);
+      final email = prefs.getString(_kEmailKey);
+      if (loggedIn && userId != null) {
+        state = AuthState(isLoggedIn: true, userId: userId, email: email);
+      }
+    } catch (_) {}
+  }
 
   Future<void> login(String email, String password) async {
-    state = state.copyWith(
-      isLoggedIn: true,
-      userId: 'user_${DateTime.now().millisecondsSinceEpoch}',
-      email: email,
-    );
+    final userId = 'user_${DateTime.now().millisecondsSinceEpoch}';
+    state = AuthState(isLoggedIn: true, userId: userId, email: email);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kLoggedInKey, true);
+      await prefs.setString(_kUserIdKey, userId);
+      await prefs.setString(_kEmailKey, email);
+    } catch (_) {}
   }
 
   Future<void> register(String email, String password, String name) async {
-    state = state.copyWith(
-      isLoggedIn: true,
-      userId: 'user_${DateTime.now().millisecondsSinceEpoch}',
-      email: email,
-    );
+    final userId = 'user_${DateTime.now().millisecondsSinceEpoch}';
+    state = AuthState(isLoggedIn: true, userId: userId, email: email);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kLoggedInKey, true);
+      await prefs.setString(_kUserIdKey, userId);
+      await prefs.setString(_kEmailKey, email);
+    } catch (_) {}
   }
 
-  void logout() {
+  Future<void> logout() async {
     state = AuthState();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kLoggedInKey);
+      await prefs.remove(_kUserIdKey);
+      await prefs.remove(_kEmailKey);
+    } catch (_) {}
   }
 }
 
