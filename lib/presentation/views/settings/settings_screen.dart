@@ -280,6 +280,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               decoration: InputDecoration(
                 labelText: 'API 地址',
                 hintText: AIConfig.defaultBaseUrlFor(config.format),
+                helperText: '填写完整端点地址，例如：https://api.openai.com/v1/chat/completions',
+                helperStyle: const TextStyle(fontSize: 10.5, color: Colors.grey),
               ),
               style: const TextStyle(fontSize: 13),
             ),

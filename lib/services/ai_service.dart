@@ -48,7 +48,7 @@ class CustomAIService implements AIService {
   }
 
   Future<String> _completeAnthropic({required String prompt, required int maxTokens}) async {
-    final url = '${_trimTrailingSlash(baseUrl)}/v1/messages';
+    final url = _trimTrailingSlash(baseUrl);
 
     final resp = await _dio.post(
       url,
@@ -78,7 +78,7 @@ class CustomAIService implements AIService {
   }
 
   Future<String> _completeOpenAi({required String prompt, required int maxTokens}) async {
-    final url = '${_trimTrailingSlash(baseUrl)}/v1/chat/completions';
+    final url = _trimTrailingSlash(baseUrl);
 
     final resp = await _dio.post(
       url,

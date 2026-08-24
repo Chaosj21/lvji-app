@@ -49,7 +49,9 @@ class AIConfig {
 
   /// 切换请求格式时给个顺手的默认地址，省得用户自己去查
   static String defaultBaseUrlFor(AIRequestFormat format) {
-    return format == AIRequestFormat.anthropic ? 'https://api.anthropic.com' : 'https://api.openai.com';
+    return format == AIRequestFormat.anthropic
+        ? 'https://api.anthropic.com/v1/messages'
+        : 'https://api.openai.com/v1/chat/completions';
   }
 
   static String defaultModelFor(AIRequestFormat format) {
