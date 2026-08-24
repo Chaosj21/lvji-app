@@ -44,5 +44,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 build/
+.pub-cache/
 .dart_tool/
-pubspec.lock
+/pubspec.lock
+
+# Sensitive config files (contains real API keys, never commit)
+lib/config/amap_keys.dart
