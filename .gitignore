@@ -48,5 +48,5 @@ build/
 .dart_tool/
 /pubspec.lock
 
-# Sensitive config files (contains real API keys, never commit)
+# 高德地图真实Key（防止被提交到Git）
 lib/config/amap_keys.dart
