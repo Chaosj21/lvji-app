@@ -34,6 +34,16 @@ final ThemeData lightTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.light,
 
+  // ⚠️ 修复：Android 默认的 Material 3 页面切换动画（PredictiveBackPageTransitionsBuilder）
+  // 在某些路由场景下会导致其包裹的子树跟 Localizations 断开，报 "No MaterialLocalizations found"。
+  // 换成更成熟稳定的 ZoomPageTransitionsBuilder，避开这条问题代码路径。
+  pageTransitionsTheme: const PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: ZoomPageTransitionsBuilder(),
+      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+    },
+  ),
+
   colorScheme: const ColorScheme.light(
     primary: colorAccentLight,
     secondary: colorOrangeLight,
@@ -190,6 +200,13 @@ final ThemeData lightTheme = ThemeData(
 final ThemeData darkTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.dark,
+
+  pageTransitionsTheme: const PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: ZoomPageTransitionsBuilder(),
+      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+    },
+  ),
 
   colorScheme: const ColorScheme.dark(
     primary: colorAccentDark,
