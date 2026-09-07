@@ -38,9 +38,12 @@ final ThemeData lightTheme = ThemeData(
   // ⚠️ 修复：Android 默认的 Material 3 页面切换动画（PredictiveBackPageTransitionsBuilder）
   // 在某些路由场景下会导致其包裹的子树跟 Localizations 断开，报 "No MaterialLocalizations found"。
   // 换成更成熟稳定的 ZoomPageTransitionsBuilder，避开这条问题代码路径。
+  // 修复 v2：ZoomPageTransitionsBuilder 换了也没用，因为它底层跟"预测性返回"用的
+  // 是同一套 SnapshotWidget 截图机制，问题根源在这里，不在具体选哪个 builder。
+  // 换成不用截图优化的 CupertinoPageTransitionsBuilder（经典滑动过渡），两个平台都用这个。
   pageTransitionsTheme: const PageTransitionsTheme(
     builders: {
-      TargetPlatform.android: ZoomPageTransitionsBuilder(),
+      TargetPlatform.android: CupertinoPageTransitionsBuilder(),
       TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
     },
   ),
@@ -202,9 +205,12 @@ final ThemeData darkTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.dark,
 
+  // 修复 v2：ZoomPageTransitionsBuilder 换了也没用，因为它底层跟"预测性返回"用的
+  // 是同一套 SnapshotWidget 截图机制，问题根源在这里，不在具体选哪个 builder。
+  // 换成不用截图优化的 CupertinoPageTransitionsBuilder（经典滑动过渡），两个平台都用这个。
   pageTransitionsTheme: const PageTransitionsTheme(
     builders: {
-      TargetPlatform.android: ZoomPageTransitionsBuilder(),
+      TargetPlatform.android: CupertinoPageTransitionsBuilder(),
       TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
     },
   ),
