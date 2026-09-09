@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'config/theme.dart';
 import 'config/routes.dart';
@@ -29,9 +30,13 @@ class LvjiApp extends ConsumerWidget {
       themeMode: themeMode,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      // 修复：DefaultMaterialLocalizations/DefaultWidgetsLocalizations 只支持英文，
+      // 中文设备下会导致 Localizations 加载失败（"No MaterialLocalizations found" 的真正原因）。
+      // 换成 flutter_localizations 包里真正支持多语言的 Global* 委托。
       localizationsDelegates: const [
-        DefaultMaterialLocalizations.delegate,
-        DefaultWidgetsLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate, // Cupertino 转场/图标等也需要这个
       ],
       supportedLocales: const [
         Locale('zh', 'CN'),
