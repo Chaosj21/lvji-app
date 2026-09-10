@@ -48,7 +48,7 @@ class CustomAIService implements AIService {
   }
 
   Future<String> _completeAnthropic({required String prompt, required int maxTokens}) async {
-    final url = _trimTrailingSlash(baseUrl);
+    final url = _joinVersionedPath(baseUrl, 'v1', 'messages');
 
     final resp = await _dio.post(
       url,
@@ -78,7 +78,7 @@ class CustomAIService implements AIService {
   }
 
   Future<String> _completeOpenAi({required String prompt, required int maxTokens}) async {
-    final url = _trimTrailingSlash(baseUrl);
+    final url = _joinVersionedPath(baseUrl, 'v1', 'chat/completions');
 
     final resp = await _dio.post(
       url,
@@ -107,4 +107,15 @@ class CustomAIService implements AIService {
   }
 
   String _trimTrailingSlash(String url) => url.replaceAll(RegExp(r'/+$'), '');
+
+  /// 拼接带版本号的接口路径，智能判断用户填的地址是否已经带了 [version]（比如 /v1），
+  /// 避免出现 "https://xxx/v1/v1/chat/completions" 这种重复拼接导致 404。
+  /// 两种填法都兼容：
+  ///   - 只填域名 "https://api.openai.com" -> 补上 /v1/chat/completions
+  ///   - 域名已带版本号 "https://api.agnes-ai.cn/v1" -> 不再重复加 /v1，直接接 /chat/completions
+  String _joinVersionedPath(String base, String version, String endpoint) {
+    final trimmed = _trimTrailingSlash(base);
+    final alreadyHasVersion = trimmed.endsWith('/$version');
+    return alreadyHasVersion ? '$trimmed/$endpoint' : '$trimmed/$version/$endpoint';
+  }
 }
